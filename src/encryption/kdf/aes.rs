@@ -1,3 +1,4 @@
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use crypto::aes::KeySize;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use crypto::aesni::AesNiEncryptor;
