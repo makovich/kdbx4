@@ -12,29 +12,29 @@ sudo: required
 env:
   global:
     # TODO Update this to match the name of your project.
-    - CRATE_NAME=trust
+    - CRATE_NAME=kdbx4
 
 matrix:
   # TODO These are all the build jobs. Adjust as necessary. Comment out what you
   # don't need
   include:
     # Android
-    - env: TARGET=aarch64-linux-android DISABLE_TESTS=1
-    - env: TARGET=arm-linux-androideabi DISABLE_TESTS=1
-    - env: TARGET=armv7-linux-androideabi DISABLE_TESTS=1
-    - env: TARGET=i686-linux-android DISABLE_TESTS=1
-    - env: TARGET=x86_64-linux-android DISABLE_TESTS=1
+    - env: TARGET=aarch64-linux-android
+    - env: TARGET=arm-linux-androideabi
+    - env: TARGET=armv7-linux-androideabi
+    - env: TARGET=i686-linux-android
+    - env: TARGET=x86_64-linux-android
 
     # iOS
-    - env: TARGET=aarch64-apple-ios DISABLE_TESTS=1
+    - env: TARGET=aarch64-apple-ios
       os: osx
-    - env: TARGET=armv7-apple-ios DISABLE_TESTS=1
+    - env: TARGET=armv7-apple-ios
       os: osx
-    - env: TARGET=armv7s-apple-ios DISABLE_TESTS=1
+    - env: TARGET=armv7s-apple-ios
       os: osx
-    - env: TARGET=i386-apple-ios DISABLE_TESTS=1
+    - env: TARGET=i386-apple-ios
       os: osx
-    - env: TARGET=x86_64-apple-ios DISABLE_TESTS=1
+    - env: TARGET=x86_64-apple-ios
       os: osx
 
     # Linux
@@ -50,7 +50,7 @@ matrix:
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu DISABLE_TESTS=1
+    - env: TARGET=s390x-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-musl
 
@@ -61,9 +61,9 @@ matrix:
       os: osx
 
     # *BSD
-    - env: TARGET=i686-unknown-freebsd DISABLE_TESTS=1
-    - env: TARGET=x86_64-unknown-freebsd DISABLE_TESTS=1
-    - env: TARGET=x86_64-unknown-netbsd DISABLE_TESTS=1
+    - env: TARGET=i686-unknown-freebsd
+    - env: TARGET=x86_64-unknown-freebsd
+    - env: TARGET=x86_64-unknown-netbsd
 
     # Windows
     - env: TARGET=x86_64-pc-windows-gnu
@@ -97,7 +97,7 @@ script:
 after_script: set +e
 
 before_deploy:
-  - sh ci/before_deploy.sh
+  # - sh ci/before_deploy.sh
 
 deploy:
   # TODO update `api_key.secure`
@@ -113,7 +113,8 @@ deploy:
     # In this example, there are some targets that are tested using the stable
     # and nightly channels. This condition makes sure there is only one release
     # for such targets and that's generated using the stable channel
-    condition: $TRAVIS_RUST_VERSION = stable
+    # condition: $TRAVIS_RUST_VERSION = stable
+    condition: $DEPLOY = never
     tags: true
   provider: releases
   skip_cleanup: true
