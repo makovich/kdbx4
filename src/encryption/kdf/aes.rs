@@ -1,9 +1,11 @@
 use crypto::aes::KeySize;
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use crypto::aesni::AesNiEncryptor;
 use crypto::aessafe::AesSafe256Encryptor;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use crypto::symmetriccipher::BlockEncryptor;
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use crypto::util::supports_aesni;
 
 use std::sync::Arc;
@@ -45,12 +47,18 @@ fn transform_inner(mut input: [u8; 16], rounds: u64, key: &[u8]) -> [u8; 16] {
     output
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn create_encryptor(key: &[u8]) -> Box<BlockEncryptor> {
     if supports_aesni() {
         Box::new(AesNiEncryptor::new(KeySize::KeySize256, key))
     } else {
         Box::new(AesSafe256Encryptor::new(key))
     }
+}
+
+#[cfg(all(not(target_arch = "x86"), not(target_arch = "x86_64")))]
+fn create_encryptor(key: &[u8]) -> Box<BlockEncryptor> {
+    Box::new(AesSafe256Encryptor::new(key))
 }
 
 fn sha256(slice: &[u8]) -> Vec<u8> {
