@@ -19,38 +19,38 @@ matrix:
   # don't need
   include:
     # Android
-    - env: TARGET=aarch64-linux-android
+    # - env: TARGET=aarch64-linux-android
     - env: TARGET=arm-linux-androideabi
     - env: TARGET=armv7-linux-androideabi
-    - env: TARGET=i686-linux-android
+    # - env: TARGET=i686-linux-android
     - env: TARGET=x86_64-linux-android
 
     # iOS
-    - env: TARGET=aarch64-apple-ios
-      os: osx
-    - env: TARGET=armv7-apple-ios
-      os: osx
-    - env: TARGET=armv7s-apple-ios
-      os: osx
-    - env: TARGET=i386-apple-ios
-      os: osx
-    - env: TARGET=x86_64-apple-ios
-      os: osx
+    # - env: TARGET=aarch64-apple-ios
+    #   os: osx
+    # - env: TARGET=armv7-apple-ios
+    #   os: osx
+    # - env: TARGET=armv7s-apple-ios
+    #   os: osx
+    # - env: TARGET=i386-apple-ios
+    #   os: osx
+    # - env: TARGET=x86_64-apple-ios
+    #   os: osx
 
     # Linux
-    - env: TARGET=aarch64-unknown-linux-gnu
+    # - env: TARGET=aarch64-unknown-linux-gnu
     - env: TARGET=arm-unknown-linux-gnueabi
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-musl
-    - env: TARGET=mips-unknown-linux-gnu
-    - env: TARGET=mips64-unknown-linux-gnuabi64
-    - env: TARGET=mips64el-unknown-linux-gnuabi64
-    - env: TARGET=mipsel-unknown-linux-gnu
-    - env: TARGET=powerpc-unknown-linux-gnu
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu
+    # - env: TARGET=mips-unknown-linux-gnu
+    # - env: TARGET=mips64-unknown-linux-gnuabi64
+    # - env: TARGET=mips64el-unknown-linux-gnuabi64
+    # - env: TARGET=mipsel-unknown-linux-gnu
+    # - env: TARGET=powerpc-unknown-linux-gnu
+    # - env: TARGET=powerpc64-unknown-linux-gnu
+    # - env: TARGET=powerpc64le-unknown-linux-gnu
+    # - env: TARGET=s390x-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-musl
 
@@ -61,9 +61,9 @@ matrix:
       os: osx
 
     # *BSD
-    - env: TARGET=i686-unknown-freebsd
-    - env: TARGET=x86_64-unknown-freebsd
-    - env: TARGET=x86_64-unknown-netbsd
+    # - env: TARGET=i686-unknown-freebsd
+    # - env: TARGET=x86_64-unknown-freebsd
+    # - env: TARGET=x86_64-unknown-netbsd
 
     # Windows
     - env: TARGET=x86_64-pc-windows-gnu
