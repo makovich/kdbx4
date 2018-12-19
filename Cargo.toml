@@ -1,0 +1,27 @@
+[package]
+name = "kdbx4"
+description = "KeePass KDBX4 file reader\n"
+version = "0.4.1"
+edition = "2018"
+
+authors = ["paul <paul@makovi.ch>"]
+license = "MIT OR Unlicense"
+readme = "README.md"
+
+documentation = "https://docs.rs/kdbx4/"
+homepage = "https://github.com/makovich/kdbx4"
+repository = "https://github.com/makovich/kdbx4"
+keywords = ["keepass", "kdbx4", "kdbx", "password"]
+
+[lib]
+name = "kdbx4"
+
+[dependencies]
+base64 = "0.9.3"
+byteorder = "1"
+flate2 = { version = "1.0", features = ["rust_backend"], default-features = false }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_warn"] }
+pretty-hex = "0.1.0"
+rust-argon2 = "0.2.0"
+rust-crypto = "^0.2"
+xmlparser = "0.6.0"
