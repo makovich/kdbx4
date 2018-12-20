@@ -17,6 +17,7 @@ keywords = ["keepass", "kdbx4", "kdbx", "password"]
 name = "kdbx4"
 
 [dependencies]
+aes = "0.3.2"
 base64 = "0.9.3"
 byteorder = "1"
 flate2 = { version = "1.0", features = ["rust_backend"], default-features = false }

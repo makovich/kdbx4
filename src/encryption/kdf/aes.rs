@@ -1,13 +1,8 @@
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use crypto::aes::KeySize;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use crypto::aesni::AesNiEncryptor;
-use crypto::aessafe::AesSafe256Encryptor;
+use aes::block_cipher_trait::generic_array::GenericArray;
+use aes::block_cipher_trait::BlockCipher;
+use aes::Aes256;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use crypto::symmetriccipher::BlockEncryptor;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use crypto::util::supports_aesni;
 
 use std::sync::Arc;
 use std::thread;
@@ -38,28 +33,16 @@ pub(super) fn transform(key_to_derive: &[u8], enc_key: &[u8], rounds: u64) -> Ve
     sha256(&derived)
 }
 
-fn transform_inner(mut input: [u8; 16], rounds: u64, key: &[u8]) -> [u8; 16] {
-    let enc = create_encryptor(&key);
-    let mut output = [0; 16];
+fn transform_inner(input: [u8; 16], rounds: u64, key: &[u8]) -> [u8; 16] {
+    let key = GenericArray::from_slice(key);
+    let mut block = GenericArray::from(input);
+    let enc = Aes256::new(&key);
     for _ in 0..rounds {
-        enc.encrypt_block(&input, &mut output);
-        input.copy_from_slice(&output);
+        enc.encrypt_block(&mut block);
     }
+    let mut output = [0; 16];
+    output.copy_from_slice(block.as_slice());
     output
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn create_encryptor(key: &[u8]) -> Box<BlockEncryptor> {
-    if supports_aesni() {
-        Box::new(AesNiEncryptor::new(KeySize::KeySize256, key))
-    } else {
-        Box::new(AesSafe256Encryptor::new(key))
-    }
-}
-
-#[cfg(all(not(target_arch = "x86"), not(target_arch = "x86_64")))]
-fn create_encryptor(key: &[u8]) -> Box<BlockEncryptor> {
-    Box::new(AesSafe256Encryptor::new(key))
 }
 
 fn sha256(slice: &[u8]) -> Vec<u8> {
