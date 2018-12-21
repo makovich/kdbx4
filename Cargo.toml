@@ -13,6 +13,13 @@ homepage = "https://github.com/makovich/kdbx4"
 repository = "https://github.com/makovich/kdbx4"
 keywords = ["keepass", "kdbx4", "kdbx", "password"]
 
+include = [
+    "**/*.rs",
+    "tests/*",
+    "Cargo.toml",
+    "README.md",
+]
+
 [lib]
 name = "kdbx4"
 

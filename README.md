@@ -1,6 +1,6 @@
 # KDBX4 ![crates.io](https://img.shields.io/crates/v/kdbx4.svg) ![docs.rs](https://docs.rs/kdbx4/badge.svg)
 
-This is an implementation of KeePass database file reader in Rust. This crate aim to work with [KDBX version 4] format.
+This is an implementation of KeePass database file reader in Rust. This crate aims to work with [KDBX version 4] format.
 
 [KDBX version 4]: https://keepass.info/help/kb/kdbx_4.html
 
