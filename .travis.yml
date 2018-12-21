@@ -19,11 +19,11 @@ matrix:
   # don't need
   include:
     # Android
-    - env: TARGET=aarch64-linux-android
+    # - env: TARGET=aarch64-linux-android
     - env: TARGET=arm-linux-androideabi
     - env: TARGET=armv7-linux-androideabi
-    - env: TARGET=i686-linux-android
-    - env: TARGET=x86_64-linux-android
+    # - env: TARGET=i686-linux-android
+    - env: TARGET=x86_64-linux-android RUSTFLAGS="-Ctarget-feature=+aes,+sse2,+ssse3"
 
     # iOS
     # - env: TARGET=aarch64-apple-ios
@@ -38,35 +38,35 @@ matrix:
     #   os: osx
 
     # Linux
-    - env: TARGET=aarch64-unknown-linux-gnu
+    # - env: TARGET=aarch64-unknown-linux-gnu
     - env: TARGET=arm-unknown-linux-gnueabi
     - env: TARGET=armv7-unknown-linux-gnueabihf
-    - env: TARGET=i686-unknown-linux-gnu
-    - env: TARGET=i686-unknown-linux-musl
-    - env: TARGET=mips-unknown-linux-gnu
-    - env: TARGET=mips64-unknown-linux-gnuabi64
-    - env: TARGET=mips64el-unknown-linux-gnuabi64
-    - env: TARGET=mipsel-unknown-linux-gnu
-    - env: TARGET=powerpc-unknown-linux-gnu
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu
-    - env: TARGET=x86_64-unknown-linux-gnu
-    - env: TARGET=x86_64-unknown-linux-musl
+    - env: TARGET=i686-unknown-linux-gnu RUSTFLAGS="-Ctarget-feature=+aes,+sse2,+ssse3"
+    - env: TARGET=i686-unknown-linux-musl RUSTFLAGS="-Ctarget-feature=+aes,+sse2,+ssse3"
+    # - env: TARGET=mips-unknown-linux-gnu
+    # - env: TARGET=mips64-unknown-linux-gnuabi64
+    # - env: TARGET=mips64el-unknown-linux-gnuabi64
+    # - env: TARGET=mipsel-unknown-linux-gnu
+    # - env: TARGET=powerpc-unknown-linux-gnu
+    # - env: TARGET=powerpc64-unknown-linux-gnu
+    # - env: TARGET=powerpc64le-unknown-linux-gnu
+    # - env: TARGET=s390x-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-gnu RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
+    - env: TARGET=x86_64-unknown-linux-musl RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
 
     # OSX
-    - env: TARGET=i686-apple-darwin
+    - env: TARGET=i686-apple-darwin RUSTFLAGS="-Ctarget-feature=+aes,+sse2,+ssse3"
       os: osx
-    - env: TARGET=x86_64-apple-darwin
+    - env: TARGET=x86_64-apple-darwin RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
       os: osx
 
     # *BSD
-    - env: TARGET=i686-unknown-freebsd
-    - env: TARGET=x86_64-unknown-freebsd
-    - env: TARGET=x86_64-unknown-netbsd
+    # - env: TARGET=i686-unknown-freebsd
+    # - env: TARGET=x86_64-unknown-freebsd
+    # - env: TARGET=x86_64-unknown-netbsd
 
     # Windows
-    - env: TARGET=x86_64-pc-windows-gnu
+    - env: TARGET=x86_64-pc-windows-gnu RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
 
     # Bare metal
     # These targets don't support std and as such are likely not suitable for
@@ -77,9 +77,9 @@ matrix:
     # - env: TARGET=thumbv7m-none-eabi
 
     # Testing other channels
-    - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-gnu RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
       rust: nightly
-    - env: TARGET=x86_64-apple-darwin
+    - env: TARGET=x86_64-apple-darwin RUSTFLAGS="-Ctarget-feature=+aes,+ssse3"
       os: osx
       rust: nightly
 
