@@ -26,21 +26,22 @@ impl CompositeKey {
     /// # fn main() -> std::io::Result<()> {
     /// use kdbx4::{Kdbx4,CompositeKey};
     ///
-    /// let key = CompositeKey::new(None, Some("~/.secret"))?;
+    /// let key = CompositeKey::new(None::<String>, Some("~/.secret"))?;
     /// let db = Kdbx4::open("~/passwords.kdbx", key);
     /// #   Ok(())
     /// # }
     /// ```
     ///
     #[allow(clippy::new_ret_no_self)]
-    pub fn new<F>(password: Option<&str>, key_file: Option<F>) -> Result<Self, io::Error>
+    pub fn new<P, F>(password: Option<P>, key_file: Option<F>) -> Result<Self, io::Error>
     where
+        P: AsRef<str>,
         F: AsRef<Path>,
     {
         let mut keys = Vec::with_capacity(3);
 
         if let Some(pass) = password {
-            keys.push(hash(pass.as_bytes()))
+            keys.push(hash(pass.as_ref().as_bytes()))
         }
 
         if let Some(key_file) = key_file {

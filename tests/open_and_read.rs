@@ -9,7 +9,8 @@ macro_rules! open_and_read {
 
             let bytes = include_bytes!(concat!(stringify!($testname), ".kdbx"));
 
-            let key = CompositeKey::new($password, $keyfile).unwrap();
+            let pwd: Option<&str> = $password;
+            let key = CompositeKey::new(pwd, $keyfile).unwrap();
             let db = Kdbx4::open_bytes(&bytes[..], key).unwrap();
 
             match &db.find(entry_title)[..] {

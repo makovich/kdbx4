@@ -1,5 +1,5 @@
 //! This is an implementation of KeePass database file reader in Rust.
-//! This crate aim to work with [KDBX version 4](https://keepass.info/help/kb/kdbx_4.html) format.
+//! This crate aims to work with [KDBX version 4](https://keepass.info/help/kb/kdbx_4.html) format.
 mod constants;
 mod database;
 mod encryption;
