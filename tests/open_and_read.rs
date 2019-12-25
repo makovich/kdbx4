@@ -1,9 +1,21 @@
 use kdbx4::*;
 
+use std::sync::Once;
+
+static INIT: Once = Once::new();
+
+fn setup() {
+    INIT.call_once(|| {
+        ::env_logger::init();
+    });
+}
+
 macro_rules! open_and_read {
     ($testname:ident, $password:expr, $keyfile:expr) => {
         #[test]
         fn $testname() {
+            setup();
+
             let entry_title = "Bar";
             let entry_pass = "BarPassword3";
 
