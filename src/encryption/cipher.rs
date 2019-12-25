@@ -3,11 +3,13 @@ use crate::KdbxResult;
 
 use log::*;
 
-use crypto::aes::{cbc_decryptor, KeySize};
-use crypto::blockmodes::PkcsPadding;
-use crypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
-use crypto::chacha20::ChaCha20;
-use crypto::symmetriccipher::Decryptor;
+use aes::Aes256;
+use block_modes::block_padding::Pkcs7;
+use block_modes::{BlockMode, Cbc};
+use chacha20::ChaCha20;
+use stream_cipher::{NewStreamCipher, StreamCipher};
+
+type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
 #[derive(Debug)]
 pub enum Cipher {
@@ -35,34 +37,24 @@ impl Cipher {
     }
 
     pub fn decrypt(&self, encrypted: &[u8], key: &[u8]) -> KdbxResult<Vec<u8>> {
-        let mut decryptor = self.create_decryptor(key);
-        let mut res = Vec::new();
-        let mut buf = [0u8; 4 * 1024];
-        let mut write_buf = RefWriteBuffer::new(&mut buf);
-        let mut read_buf = RefReadBuffer::new(&encrypted);
-
-        loop {
-            let op = decryptor.decrypt(&mut read_buf, &mut write_buf, true);
-
-            res.extend_from_slice(write_buf.take_read_buffer().take_remaining());
-
-            match op {
-                Ok(BufferResult::BufferUnderflow) => break,
-                Ok(BufferResult::BufferOverflow) => { /* print!("*") */ }
-                Err(err) => {
-                    error!("cause: {:?}", err);
-                    return Err(Error::Decryption);
-                }
-            }
-        }
-
-        Ok(res)
-    }
-
-    fn create_decryptor(&self, key: &[u8]) -> Box<Decryptor> {
         match self {
-            Cipher::ChaCha20(iv) => Box::new(ChaCha20::new(key, iv)),
-            Cipher::Aes256(iv) => cbc_decryptor(KeySize::KeySize256, key, iv, PkcsPadding),
+            Cipher::ChaCha20(iv) => {
+                debug!("decrypting ChaCha20");
+
+                let mut res = Vec::new();
+                res.extend_from_slice(encrypted);
+
+                let mut cipher = ChaCha20::new_var(key, iv).map_err(|_| Error::Decryption)?;
+                cipher.decrypt(&mut res);
+
+                Ok(res)
+            }
+            Cipher::Aes256(iv) => {
+                debug!("decrypting Aes256");
+
+                let cipher = Aes256Cbc::new_var(key, iv).map_err(|_| Error::Decryption)?;
+                cipher.decrypt_vec(encrypted).map_err(|_| Error::Decryption)
+            }
         }
     }
 }

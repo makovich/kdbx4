@@ -1,9 +1,7 @@
 use crate::kdbx::Kdbx4;
 
 use byteorder::{ByteOrder, LE};
-
-use crypto::digest::Digest;
-use crypto::sha2::{Sha256, Sha512};
+use sha2::{Digest, Sha256, Sha512};
 
 use std::fs::read;
 use std::io;
@@ -59,12 +57,9 @@ impl CompositeKey {
     }
 
     fn compose_keys(&self) -> [u8; 32] {
-        let mut composite_key = [0; 32];
         let mut h = Sha256::new();
         self.keys.iter().for_each(|k| h.input(k));
-        h.result(&mut composite_key);
-
-        composite_key
+        h.result().into()
     }
 }
 
@@ -83,42 +78,30 @@ impl<'a> TransformedKey<'a> {
         let mut block_idx_bytes = [0; 8];
         LE::write_u64(&mut block_idx_bytes, block_idx);
 
-        let mut block_key = [0; 64];
         let mut h = Sha512::new();
         h.input(&block_idx_bytes);
-        h.input(&self.hmac_key());
-        h.result(&mut block_key);
-
-        block_key
+        h.input(&self.hmac_key().as_ref());
+        unsafe { std::mem::transmute(h.result()) }
     }
 
     pub fn hmac_key(&self) -> [u8; 64] {
-        let mut hmac_key = [0; 64];
         let mut h = Sha512::new();
         h.input(&self.1.master_seed);
         h.input(&self.0);
         h.input(&[1]);
-        h.result(&mut hmac_key);
-
-        hmac_key
+        unsafe { std::mem::transmute(h.result()) }
     }
 
     pub fn final_key(&self) -> [u8; 32] {
-        let mut final_key = [0; 32];
         let mut h = Sha256::new();
         h.input(&self.1.master_seed);
         h.input(&self.0);
-        h.result(&mut final_key);
-
-        final_key
+        unsafe { std::mem::transmute(h.result()) }
     }
 }
 
 fn hash(slice: &[u8]) -> [u8; 32] {
-    let mut hash = [0; 32];
     let mut h = Sha256::new();
     h.input(slice);
-    h.result(&mut hash);
-
-    hash
+    unsafe { std::mem::transmute(h.result()) }
 }

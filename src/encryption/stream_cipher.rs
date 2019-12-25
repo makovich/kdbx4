@@ -3,12 +3,10 @@ use crate::KdbxResult;
 
 use log::*;
 
-use crypto::buffer::{BufferResult, ReadBuffer, RefReadBuffer, RefWriteBuffer, WriteBuffer};
-use crypto::chacha20::ChaCha20;
-use crypto::digest::Digest;
-use crypto::salsa20::Salsa20;
-use crypto::sha2::{Sha256, Sha512};
-use crypto::symmetriccipher::Encryptor;
+use chacha20::ChaCha20;
+use salsa20::Salsa20;
+use sha2::{Digest, Sha256, Sha512};
+use stream_cipher::{NewStreamCipher, SyncStreamCipher, SyncStreamCipherSeek};
 
 use base64;
 
@@ -59,7 +57,7 @@ impl StreamCipher {
     /// # Example
     ///
     /// ```no_compile
-    /// let cipher = StreamCipher::ChaCha20(key);
+    /// let cipher = StreamCipher::try_from(id, key).unwrap().decryptor();
     /// let protected = vec![u8_slice1, u8_slice2, u8_slice3].into_iter();
     /// let decrypted = protected.map(|v| cipher.decrypt(v).unwrap());
     /// ```
@@ -69,23 +67,25 @@ impl StreamCipher {
 
         match self {
             StreamCipher::ChaCha20(stream_key) => {
-                let mut buf = [0; 64];
                 let mut h = Sha512::new();
                 h.input(stream_key);
-                h.result(&mut buf);
+                let buf = h.result();
 
                 let key = &buf[..32];
                 let iv = &buf[32..44];
 
-                StreamDecryptor(Box::new(ChaCha20::new(key, iv)))
+                StreamDecryptor(Box::new(
+                    ChaCha20::new_var(key, iv).expect("Unable to create ChaCha20 decryptor"),
+                ))
             }
             StreamCipher::Salsa20(stream_key) => {
-                let mut key = [0; 32];
                 let mut h = Sha256::new();
                 h.input(stream_key);
-                h.result(&mut key);
+                let key = h.result();
 
-                StreamDecryptor(Box::new(Salsa20::new(&key, SALSA20_IV)))
+                StreamDecryptor(Box::new(
+                    Salsa20::new_var(&key, SALSA20_IV).expect("Unable to create Salsa20 decryptor"),
+                ))
             }
         }
     }
@@ -99,6 +99,10 @@ impl StreamCipher {
             .map_err(From::from)
     }
 }
+
+/// Helper to combine both needed traits
+trait Encryptor: SyncStreamCipher + SyncStreamCipherSeek {}
+impl<T: SyncStreamCipher + SyncStreamCipherSeek> Encryptor for T {}
 
 pub struct StreamDecryptor(Box<Encryptor>);
 
@@ -124,49 +128,18 @@ impl StreamDecryptor {
         debug!("BASE64\n{:?}", encrypted.hex_dump());
         debug!("DECODED\n{:?}", decoded.hex_dump());
 
-        let mut pseudorandom = Vec::<u8>::new();
-
-        // How inner random stream decrypting works:
-        // - encrypt all zeroed array with particular cipher
-        // - XOR each byte of the encrypted input with previously generated
-        //   pseudorandom stream's byte
+        // How "inner random stream" decryption works:
+        // - encrypt all zeroed array with particular cipher (pseudorandom stream)
+        // - XOR each byte of the encrypted input with one from pseudorandom stream
         // - because of the streaming nature, the same decryptor instance
-        //   must be used for all protected binary inputs
-        //   (think of concatenation of all passwords apperaing in a document order)
-        {
-            let zero_buf = vec![0u8; skip + decoded.len()];
-            let mut read_buf = RefReadBuffer::new(&zero_buf);
+        //   must be used for all protected binary inputs (all Protected="Ture" fields
+        //   within XML database document)
+        let mut zero_buf = vec![0u8; decoded.len()];
+        self.0.seek(skip as u64);
+        self.0.apply_keystream(zero_buf.as_mut_slice());
 
-            let mut buf = vec![0u8; skip + decoded.len()];
-            let mut write_buf = RefWriteBuffer::new(&mut buf);
+        debug!("PSEUDORANDOM\n{:?}", zero_buf.hex_dump());
 
-            loop {
-                let op = self.0.encrypt(&mut read_buf, &mut write_buf, true);
-
-                pseudorandom.extend_from_slice(write_buf.take_read_buffer().take_remaining());
-
-                match op {
-                    Ok(BufferResult::BufferUnderflow) => break,
-                    Ok(BufferResult::BufferOverflow) => { /* print!("*") */ }
-                    Err(err) => {
-                        error!("cause: {:?}", err);
-                        return Err(Error::Decryption);
-                    }
-                }
-            }
-        }
-
-        debug!(
-            "PSEUDORANDOM\n{:?}",
-            pseudorandom[skip..(skip + decoded.len())]
-                .as_ref()
-                .hex_dump()
-        );
-
-        Ok(pseudorandom[skip..]
-            .iter()
-            .zip(decoded)
-            .map(|(x, y)| x ^ y)
-            .collect())
+        Ok(zero_buf.iter().zip(decoded).map(|(x, y)| x ^ y).collect())
     }
 }

@@ -8,10 +8,8 @@ use log::*;
 
 use byteorder::{ByteOrder, LE};
 
-use crypto::digest::Digest;
-use crypto::hmac::Hmac;
-use crypto::mac::{Mac, MacResult};
-use crypto::sha2::Sha256;
+use hmac::{Hmac, Mac};
+use sha2::{Digest, Sha256};
 
 use flate2::read::GzDecoder;
 
@@ -268,18 +266,17 @@ fn verify_sig<'a>(offset: &mut usize, input: &'a [u8]) -> KdbxResult<()> {
 }
 
 fn verify_sha(header: &[u8], sha256: &[u8]) -> KdbxResult<()> {
-    let mut digest = [0; 32];
     let mut hasher = Sha256::new();
     hasher.input(header);
-    hasher.result(&mut digest);
+    let digest = hasher.result();
 
     debug!(
         "\nHEADER SHA256\nSTORED {:?}\nDIGEST {:?}",
         sha256.hex_dump(),
-        digest.as_ref().hex_dump()
+        digest.as_slice().hex_dump()
     );
 
-    if sha256 == digest {
+    if sha256 == digest.as_slice() {
         return Ok(());
     }
 
@@ -287,18 +284,26 @@ fn verify_sha(header: &[u8], sha256: &[u8]) -> KdbxResult<()> {
 }
 
 fn verify_hmac(header: &[u8], hmac256: &[u8], key: &[u8]) -> KdbxResult<()> {
-    let mut hmac = Hmac::new(Sha256::new(), &key);
+    let mut hmac = Hmac::<Sha256>::new_varkey(&key)
+        .map_err(|_| Error::Other("Can't verify HMAC".to_string()))?;
+
     hmac.input(header);
 
-    if MacResult::new(&hmac256).eq(&hmac.result()) {
-        debug!(
-            "\nHEADER HMAC256\nSTORED {:?}\nDIGEST {:?}",
-            hmac256.hex_dump(),
-            hmac.result().code().hex_dump()
-        );
-
+    if hmac.verify(hmac256).is_ok() {
         return Ok(());
     }
+
+    let hmac = || {
+        let mut hmac = Hmac::<Sha256>::new_varkey(&key).unwrap();
+        hmac.input(header);
+        hmac.result().code()
+    };
+
+    debug!(
+        "\nHEADER HMAC256\nSTORED {:?}\nDIGEST {:?}",
+        hmac256.hex_dump(),
+        hmac().as_slice().hex_dump()
+    );
 
     Err(Error::CorruptedFile)
 }
@@ -310,20 +315,30 @@ fn verify_block(data: &[u8], hmac256: &[u8], blk_idx: u64, key: &[u8]) -> KdbxRe
     let mut num_of_bytes = [0; 4];
     LE::write_u32(&mut num_of_bytes, data.len() as u32);
 
-    let mut hmac = Hmac::new(Sha256::new(), &key);
+    let mut hmac = Hmac::<Sha256>::new_varkey(&key)
+        .map_err(|_| Error::Other("Can't verify HMAC".to_string()))?;
+
     hmac.input(&block_idx_bytes);
     hmac.input(&num_of_bytes);
     hmac.input(data);
 
-    if MacResult::new(&hmac256).eq(&hmac.result()) {
-        debug!(
-            "\nBLOCK HMAC256\nSTORED {:?}\nDIGEST {:?}",
-            hmac256.hex_dump(),
-            hmac.result().code().hex_dump()
-        );
-
+    if hmac.verify(hmac256).is_ok() {
         return Ok(());
     }
+
+    let hmac = || {
+        let mut hmac = Hmac::<Sha256>::new_varkey(&key).unwrap();
+        hmac.input(&block_idx_bytes);
+        hmac.input(&num_of_bytes);
+        hmac.input(data);
+        hmac.result().code()
+    };
+
+    debug!(
+        "\nHEADER HMAC256\nSTORED {:?}\nDIGEST {:?}",
+        hmac256.hex_dump(),
+        hmac().as_slice().hex_dump()
+    );
 
     Err(Error::CorruptedFile)
 }
