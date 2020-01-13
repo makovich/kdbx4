@@ -69,7 +69,7 @@ impl From<String> for Error {
 }
 
 impl error::Error for Error {
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         if let Error::Io(ref e) = self {
             Some(e)
         } else {

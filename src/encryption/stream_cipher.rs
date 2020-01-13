@@ -104,7 +104,7 @@ impl StreamCipher {
 trait Encryptor: SyncStreamCipher + SyncStreamCipherSeek {}
 impl<T: SyncStreamCipher + SyncStreamCipherSeek> Encryptor for T {}
 
-pub struct StreamDecryptor(Box<Encryptor>);
+pub struct StreamDecryptor(Box<dyn Encryptor>);
 
 impl StreamDecryptor {
     #[allow(dead_code)]
