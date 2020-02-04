@@ -1,7 +1,7 @@
 [package]
 name = "kdbx4"
 description = "KeePass KDBX4 file reader\n"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2018"
 
 authors = ["paul <paul@makovi.ch>"]
