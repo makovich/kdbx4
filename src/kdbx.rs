@@ -2,7 +2,7 @@ use crate::database::{Binaries, Database, Xml};
 use crate::encryption::{Cipher, Kdf, StreamCipher};
 use crate::error::Error;
 use crate::keys::{CompositeKey, TransformedKey};
-use crate::KdbxResult;
+use crate::Result as KdbxResult;
 
 use log::*;
 

@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::error::Error;
-use crate::KdbxResult;
+use crate::Result as KdbxResult;
 
 use std::cell::Cell;
 use std::collections::HashMap;

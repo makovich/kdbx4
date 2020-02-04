@@ -12,4 +12,4 @@ pub use crate::error::Error;
 pub use crate::kdbx::Kdbx4;
 pub use crate::keys::CompositeKey;
 
-pub type KdbxResult<T> = Result<T, error::Error>;
+pub type Result<T> = ::std::result::Result<T, error::Error>;

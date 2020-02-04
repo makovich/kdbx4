@@ -7,7 +7,7 @@ pub use self::entry::Entry;
 pub use self::xml::Xml;
 
 use crate::encryption::StreamCipher;
-use crate::KdbxResult;
+use crate::Result as KdbxResult;
 
 use log::*;
 

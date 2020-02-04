@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::KdbxResult;
+use crate::Result as KdbxResult;
 
 use log::*;
 

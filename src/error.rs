@@ -68,6 +68,12 @@ impl From<String> for Error {
     }
 }
 
+impl<'a> From<&'a str> for Error {
+    fn from(err: &'a str) -> Error {
+        Error::Other(err.to_owned())
+    }
+}
+
 impl error::Error for Error {
     fn cause(&self) -> Option<&dyn error::Error> {
         if let Error::Io(ref e) = self {
@@ -95,11 +101,5 @@ impl fmt::Display for Error {
             Error::Io(ref e) => e.fmt(f),
             Error::Other(ref s) => f.write_str(&**s),
         }
-    }
-}
-
-impl<'a> From<&'a str> for Error {
-    fn from(err: &'a str) -> Error {
-        Error::Other(err.to_owned())
     }
 }
