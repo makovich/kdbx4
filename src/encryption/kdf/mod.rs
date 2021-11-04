@@ -15,6 +15,7 @@ use std::collections::HashMap;
 pub enum Kdf {
     Argon2 {
         // version: u8,
+        variant_is_id: bool,
         iterations: u32,
         parallelism: u32,
         memory: u32,
@@ -32,6 +33,7 @@ impl Kdf {
     pub fn transform(&self, key: &[u8]) -> Vec<u8> {
         match self {
             Kdf::Argon2 {
+                variant_is_id,
                 iterations,
                 parallelism,
                 memory,
@@ -46,6 +48,7 @@ impl Kdf {
                 salt,
                 secret_key,
                 assoc_data,
+                *variant_is_id,
             ),
             Kdf::Aes { seed, rounds } => aes::transform(key, seed, *rounds),
         }
@@ -53,7 +56,7 @@ impl Kdf {
 
     pub fn try_from(input: &[u8]) -> KdbxResult<Self> {
         use crate::constants::{
-            uuid::{AES_KDF, ARGON2_KDF},
+            uuid::{AES_KDF, ARGON2D_KDF, ARGON2ID_KDF},
             vd_param::{aes, argon2, UUID},
             vd_type::NONE,
             EMPTY, VD_VER,
@@ -87,7 +90,8 @@ impl Kdf {
         });
 
         match map.get(UUID) {
-            Some(&ARGON2_KDF) => Ok(Kdf::Argon2 {
+            Some(v @ &ARGON2D_KDF) | Some(v @ &ARGON2ID_KDF) => Ok(Kdf::Argon2 {
+                variant_is_id: *v == ARGON2ID_KDF,
                 iterations: LE::read_u64(
                     map.get(argon2::ITERATIONS)
                         .unwrap_or(&argon2::DEFAULT_ITERATIONS),
