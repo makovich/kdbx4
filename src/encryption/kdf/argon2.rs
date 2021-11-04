@@ -1,5 +1,6 @@
 use argon2::{self, Config};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn transform(
     key: &[u8],
     iterations: u32,
@@ -8,9 +9,15 @@ pub(super) fn transform(
     salt: &[u8],
     secret_key: &[u8],
     assoc_data: &[u8],
+    variant_is_id: bool,
 ) -> Vec<u8> {
+    let variant = if variant_is_id {
+        argon2::Variant::Argon2id
+    } else {
+        argon2::Variant::Argon2d
+    };
     let config = Config {
-        variant: argon2::Variant::Argon2d,
+        variant,
         version: argon2::Version::Version13,
         hash_length: 32,
         mem_cost: memory / 1024,

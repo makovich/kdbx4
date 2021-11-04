@@ -27,18 +27,24 @@ macro_rules! open_and_read {
 
             match &db.find(entry_title)[..] {
                 [single] => assert_eq!(single.password().unwrap(), entry_pass),
-                _ => panic!("Database contains more than one entry with `Foo` title."),
+                _ => panic!("Database contains more than one entry with `Bar` title."),
             }
         }
     };
 }
 
 open_and_read!(aes_aes_gzip_pwd, Some("P@ssw0rd"), None::<String>);
-open_and_read!(aes_argon_gzip_pwd, Some("P@ssw0rd"), None::<String>);
-open_and_read!(chacha_argon_gzip_pwd, Some("P@ssw0rd"), None::<String>);
-open_and_read!(chacha_argon_keyfile, None, Some("tests/secret"));
+open_and_read!(aes_argon2d_gzip_pwd, Some("P@ssw0rd"), None::<String>);
+open_and_read!(chacha_argon2d_gzip_pwd, Some("P@ssw0rd"), None::<String>);
+open_and_read!(chacha_argon2d_keyfile, None, Some("tests/secret"));
 open_and_read!(
-    chacha_argon_keyfile_pwd_gzip,
+    chacha_argon2d_keyfile_pwd_gzip,
+    Some("P@ssw0rd"),
+    Some("tests/secret")
+);
+open_and_read!(aes_argon2id_gzip_pwd, Some("P@ssw0rd"), None::<String>);
+open_and_read!(
+    chacha_argon2id_gzip_pwd_keyfile,
     Some("P@ssw0rd"),
     Some("tests/secret")
 );
