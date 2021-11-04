@@ -15,6 +15,7 @@ pub struct Entry<'a> {
     pub(super) uuid: &'a str,
     pub(super) title: &'a str,
     pub(super) password: (&'a str, usize),
+    #[allow(unused)]
     pub(super) history: Option<Vec<Entry<'a>>>,
     pub(super) database: Cell<Option<&'a Database>>,
     pub(super) group: Vec<&'a str>,
@@ -43,7 +44,7 @@ impl<'a> Entry<'a> {
 
         self.database
             .get()
-            .ok_or_else(|| Error::Other(msg))?
+            .ok_or(Error::Other(msg))?
             .cipher
             .decrypt_offset(self.password.0, self.password.1)
     }

@@ -39,9 +39,7 @@ impl StreamCipher {
         match id {
             SALSA20_STREAM => Ok(StreamCipher::Salsa20(key)),
             CHACHA20_STREAM => Ok(StreamCipher::ChaCha20(key)),
-            _ => Err(Error::UnsupportedStreamCipher(unsafe {
-                ::std::mem::transmute::<u32, [u8; 4]>(id.to_le()).to_vec()
-            })),
+            _ => Err(Error::UnsupportedStreamCipher(id.to_le_bytes().to_vec())),
         }
     }
 
@@ -91,6 +89,7 @@ impl StreamCipher {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum StreamDecryptor {
     Salsa20(Salsa20),
     ChaCha20(ChaCha20),

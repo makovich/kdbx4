@@ -153,7 +153,7 @@ fn read_header(offset: &mut usize, input: &[u8]) -> KdbxResult<Kdbx4> {
         let (typ, _, val) = read_tlv(offset, input);
 
         if typ == END_OF_HEADER {
-            return Ok(Kdbx4::try_from(&map)?);
+            return Kdbx4::try_from(&map);
         }
 
         map.insert(typ, val);
@@ -230,7 +230,7 @@ fn decrypt(
     key: &TransformedKey,
     decompress: bool,
 ) -> KdbxResult<Vec<u8>> {
-    let res = cipher.decrypt(&encrypted, &key.final_key())?;
+    let res = cipher.decrypt(encrypted, &key.final_key())?;
 
     Ok(if decompress { gunzip(&res)? } else { res })
 }
@@ -245,7 +245,7 @@ fn gunzip(data: &[u8]) -> KdbxResult<Vec<u8>> {
     Ok(buf)
 }
 
-fn verify_sig<'a>(offset: &mut usize, input: &'a [u8]) -> KdbxResult<()> {
+fn verify_sig(offset: &mut usize, input: &[u8]) -> KdbxResult<()> {
     use crate::constants::{SIG1, SIG2, VERSION};
 
     for exp in &[SIG1, SIG2, VERSION] {
@@ -294,7 +294,7 @@ fn verify_hmac(header: &[u8], hmac256: &[u8], key: &[u8]) -> KdbxResult<()> {
     }
 
     let hmac = || {
-        let mut hmac = Hmac::<Sha256>::new_from_slice(&key).unwrap();
+        let mut hmac = Hmac::<Sha256>::new_from_slice(key).unwrap();
         hmac.update(header);
         hmac.finalize()
     };
@@ -315,7 +315,7 @@ fn verify_block(data: &[u8], hmac256: &[u8], blk_idx: u64, key: &[u8]) -> KdbxRe
     let mut num_of_bytes = [0; 4];
     LE::write_u32(&mut num_of_bytes, data.len() as u32);
 
-    let mut hmac = Hmac::<Sha256>::new_from_slice(&key)
+    let mut hmac = Hmac::<Sha256>::new_from_slice(key)
         .map_err(|_| Error::Other("Can't verify HMAC".to_string()))?;
 
     hmac.update(&block_idx_bytes);
@@ -327,7 +327,7 @@ fn verify_block(data: &[u8], hmac256: &[u8], blk_idx: u64, key: &[u8]) -> KdbxRe
     }
 
     let hmac = || {
-        let mut hmac = Hmac::<Sha256>::new_from_slice(&key).unwrap();
+        let mut hmac = Hmac::<Sha256>::new_from_slice(key).unwrap();
         hmac.update(&block_idx_bytes);
         hmac.update(&num_of_bytes);
         hmac.update(data);
