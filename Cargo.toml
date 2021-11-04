@@ -38,6 +38,6 @@ pretty-hex = "0.2.1"
 rust-argon2 = "0.8.3"
 salsa20 = "0.9.0"
 sha2 = "0.9.8"
-xmlparser = "0.6.1"
+xmlparser = "0.13.3"
 
 [features]

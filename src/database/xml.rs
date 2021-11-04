@@ -60,20 +60,23 @@ impl<'a> Iterator for FakeCloseTagAdaptor<'a> {
                 None => return None,
 
                 // This is what we need: `<ns:tag`
-                Some(Ok(ElementStart(ns, tag))) => {
+                Some(Ok(start @ ElementStart { prefix, local, .. })) => {
                     // Recreating our match
-                    self.buf.push_front(Ok(ElementStart(ns, tag)));
+                    self.buf.push_front(Ok(start));
 
                     // Looping because of zero-to-many attributes
                     for nxt in self.tzr.by_ref() {
                         match nxt {
                             // Leaving `name="value"` as it is and moving forward
-                            Ok(Attribute(_, _)) => self.buf.push_back(nxt),
+                            Ok(Attribute { .. }) => self.buf.push_back(nxt),
 
                             // Replacing `/>` with `>` and `</ns:tag>` and done
-                            Ok(ElementEnd(Empty)) => {
-                                self.buf.push_back(Ok(ElementEnd(Open)));
-                                self.buf.push_back(Ok(ElementEnd(Close(ns, tag))));
+                            Ok(ElementEnd { end: Empty, span }) => {
+                                self.buf.push_back(Ok(ElementEnd { end: Open, span }));
+                                self.buf.push_back(Ok(ElementEnd {
+                                    end: Close(prefix, local),
+                                    span,
+                                }));
                                 break;
                             }
 
@@ -168,15 +171,18 @@ impl<'a> XmlParser<'a> {
 
         while let Some(token) = self.tzr.next() {
             match token? {
-                ElementStart(_, ref tag) if a("Group", tag) => {
+                ElementStart { ref local, .. } if a("Group", local) => {
                     group.push(self.read_group_name()?);
                 }
 
-                ElementEnd(Close(_, ref tag)) if a("Group", tag) => {
+                ElementEnd {
+                    end: Close(_, ref local),
+                    ..
+                } if a("Group", local) => {
                     group.pop();
                 }
 
-                ElementStart(_, ref tag) if a("Entry", tag) => {
+                ElementStart { ref local, .. } if a("Entry", local) => {
                     let mut entry = self.read_entry(false)?;
 
                     // Update entry's group
@@ -197,8 +203,8 @@ impl<'a> XmlParser<'a> {
             let token = self.tzr.next().ok_or(Error::XmlParse)??;
 
             match token {
-                ElementStart(_, ref tag) if a("Name", tag) => {
-                    let (_, v) = self.read_text(tag.to_str())?;
+                ElementStart { ref local, .. } if a("Name", local) => {
+                    let (_, v) = self.read_text(local.as_str())?;
                     return Ok(v.plain());
                 }
 
@@ -215,12 +221,15 @@ impl<'a> XmlParser<'a> {
             let token = self.tzr.next().ok_or(Error::XmlParse)??;
 
             match token {
-                ElementStart(_, ref tag) if a("UUID", tag) => {
-                    let (k, v) = self.read_text(tag.to_str())?;
+                ElementStart { ref local, .. } if a("UUID", local) => {
+                    let (k, v) = self.read_text(local.as_str())?;
                     map.insert(k, v);
                 }
 
-                ElementEnd(Close(_, ref tag)) if a("Entry", tag) => {
+                ElementEnd {
+                    end: Close(_, ref local),
+                    ..
+                } if a("Entry", local) => {
                     return Ok(Entry {
                         props: map.iter().fold(HashMap::new(), |mut acc, (k, v)| {
                             acc.insert(k, v.plain());
@@ -235,11 +244,11 @@ impl<'a> XmlParser<'a> {
                     });
                 }
 
-                ElementStart(_, ref tag) if a("History", tag) && !is_hist => {
+                ElementStart { ref local, .. } if a("History", local) && !is_hist => {
                     hist = self.read_history()?;
                 }
 
-                ElementStart(_, ref tag) if a("String", tag) => {
+                ElementStart { ref local, .. } if a("String", local) => {
                     let (k, v) = self.read_kvpair()?;
                     map.insert(k, v);
                 }
@@ -255,17 +264,20 @@ impl<'a> XmlParser<'a> {
             let token = self.tzr.next().ok_or(Error::XmlParse)??;
 
             match token {
-                ElementStart(_, ref tag) if a("Entry", tag) => {
+                ElementStart { ref local, .. } if a("Entry", local) => {
                     let entry = self.read_entry(true)?;
                     result.push(entry);
                 }
 
-                ElementStart(_, ref tag) if a("History", tag) => {
+                ElementStart { ref local, .. } if a("History", local) => {
                     error!("fatal: malformed XML (<History> tag inside Entry's history)");
                     return Err(Error::XmlParse);
                 }
 
-                ElementEnd(Close(_, ref tag)) if a("History", tag) => {
+                ElementEnd {
+                    end: Close(_, ref local),
+                    ..
+                } if a("History", local) => {
                     return if result.is_empty() {
                         Ok(None)
                     } else {
@@ -284,8 +296,12 @@ impl<'a> XmlParser<'a> {
         loop {
             let token = self.tzr.next().ok_or(Error::XmlParse)??;
 
-            if let ElementEnd(Close(_, ref tag)) = token {
-                if a(tag_name, tag) {
+            if let ElementEnd {
+                end: Close(_, ref local),
+                ..
+            } = token
+            {
+                if a(tag_name, local) {
                     return Ok((tag_name, Value::Plain(val)));
                 }
 
@@ -293,8 +309,8 @@ impl<'a> XmlParser<'a> {
                 return Err(Error::XmlParse);
             }
 
-            if let Text(txt) = token {
-                val = txt.to_str();
+            if let Text { text } = token {
+                val = text.as_str();
             }
         }
     }
@@ -309,31 +325,36 @@ impl<'a> XmlParser<'a> {
 
             match token {
                 // Assuming `<Key>` tag always have its closing pair `</Key>`
-                ElementStart(_, ref tag) if a("Key", tag) => {
+                ElementStart { ref local, .. } if a("Key", local) => {
                     key = loop {
-                        if let Some(Ok(Text(txt))) = self.tzr.next() {
-                            break txt.to_str();
+                        if let Some(Ok(Text { text })) = self.tzr.next() {
+                            break text.as_str();
                         }
                     };
                 }
 
                 // `<Value/>` shold not be there
-                ElementStart(_, ref tag) if a("Value", tag) => {
+                ElementStart { ref local, .. } if a("Value", local) => {
                     val = loop {
                         let token = self.tzr.next().ok_or(Error::XmlParse)??;
 
                         // `</Value>` have been met
-                        if let ElementEnd(Close(_, _)) = token {
+                        if let ElementEnd { end: Close(..), .. } = token {
                             break "";
                         }
 
                         // Text inside of the `<Value>` tag
-                        if let Text(txt) = token {
-                            break txt.to_str();
+                        if let Text { text } = token {
+                            break text.as_str();
                         }
 
-                        if let Attribute((_, ref n), ref v) = token {
-                            protected = a("Protected", n) && a("True", v);
+                        if let Attribute {
+                            ref local,
+                            ref value,
+                            ..
+                        } = token
+                        {
+                            protected = a("Protected", local) && a("True", value);
                             // <String>
                             //   <Key>Password</Key>
                             //   <Value Protected="True">XXXXXX</Value>
@@ -344,7 +365,10 @@ impl<'a> XmlParser<'a> {
 
                 // Got closing `</String>` tag
                 // Time to return the KV pair
-                ElementEnd(Close(_, ref tag)) if a("String", tag) => {
+                ElementEnd {
+                    end: Close(_, ref local),
+                    ..
+                } if a("String", local) => {
                     if protected {
                         // Length of the protected binary in bytes
                         let len = base64::decode(val).map(|v| v.len()).unwrap_or(0);
@@ -368,5 +392,5 @@ impl<'a> XmlParser<'a> {
 }
 
 fn a(name: &str, tag: &StrSpan) -> bool {
-    tag.to_str().eq(name)
+    tag.as_str().eq(name)
 }
