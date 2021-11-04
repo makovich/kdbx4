@@ -1,13 +1,10 @@
 use crate::error::Error;
 use crate::Result as KdbxResult;
-
-use log::*;
-
-use aes::Aes256;
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Cbc};
+use aes::{Aes256, NewBlockCipher};
+use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
 use chacha20::ChaCha20;
-use stream_cipher::{NewStreamCipher, StreamCipher};
+use cipher::{generic_array::GenericArray, NewCipher, StreamCipher};
+use log::*;
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
@@ -37,22 +34,23 @@ impl Cipher {
     }
 
     pub fn decrypt(&self, encrypted: &[u8], key: &[u8]) -> KdbxResult<Vec<u8>> {
+        let key = GenericArray::from_slice(key);
         match self {
             Cipher::ChaCha20(iv) => {
                 debug!("decrypting ChaCha20");
 
-                let mut res = Vec::new();
-                res.extend_from_slice(encrypted);
+                let mut res = encrypted.to_vec();
 
-                let mut cipher = ChaCha20::new_var(key, iv).map_err(|_| Error::Decryption)?;
-                cipher.decrypt(&mut res);
+                let mut cipher = ChaCha20::new(key, GenericArray::from_slice(iv));
+                cipher.apply_keystream(&mut res);
 
                 Ok(res)
             }
             Cipher::Aes256(iv) => {
                 debug!("decrypting Aes256");
 
-                let cipher = Aes256Cbc::new_var(key, iv).map_err(|_| Error::Decryption)?;
+                let aes = Aes256::new(key);
+                let cipher = Aes256Cbc::new(aes, GenericArray::from_slice(iv));
                 cipher.decrypt_vec(encrypted).map_err(|_| Error::Decryption)
             }
         }

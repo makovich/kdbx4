@@ -1,17 +1,12 @@
 use crate::error::Error;
 use crate::Result as KdbxResult;
-
-use log::*;
-
 use chacha20::ChaCha20;
+use cipher::generic_array::GenericArray;
+use cipher::{NewCipher, StreamCipher as _, StreamCipherSeek};
+use log::*;
+use pretty_hex::PrettyHex;
 use salsa20::Salsa20;
 use sha2::{Digest, Sha256, Sha512};
-use stream_cipher::{NewStreamCipher, SyncStreamCipher, SyncStreamCipherSeek};
-
-use base64;
-
-use pretty_hex::PrettyHex;
-
 use std::fmt::{self, Debug};
 
 /// Decrypted database has a form of XML.
@@ -68,24 +63,20 @@ impl StreamCipher {
         match self {
             StreamCipher::ChaCha20(stream_key) => {
                 let mut h = Sha512::new();
-                h.input(stream_key);
-                let buf = h.result();
+                h.update(stream_key);
+                let buf = h.finalize();
 
                 let key = &buf[..32];
                 let iv = &buf[32..44];
 
-                StreamDecryptor(Box::new(
-                    ChaCha20::new_var(key, iv).expect("Unable to create ChaCha20 decryptor"),
-                ))
+                StreamDecryptor::ChaCha20(ChaCha20::new_from_slices(key, iv).unwrap())
             }
             StreamCipher::Salsa20(stream_key) => {
                 let mut h = Sha256::new();
-                h.input(stream_key);
-                let key = h.result();
+                h.update(stream_key);
+                let key = h.finalize();
 
-                StreamDecryptor(Box::new(
-                    Salsa20::new_var(&key, SALSA20_IV).expect("Unable to create Salsa20 decryptor"),
-                ))
+                StreamDecryptor::Salsa20(Salsa20::new(&key, GenericArray::from_slice(SALSA20_IV)))
             }
         }
     }
@@ -100,11 +91,10 @@ impl StreamCipher {
     }
 }
 
-/// Helper to combine both needed traits
-trait Encryptor: SyncStreamCipher + SyncStreamCipherSeek {}
-impl<T: SyncStreamCipher + SyncStreamCipherSeek> Encryptor for T {}
-
-pub struct StreamDecryptor(Box<dyn Encryptor>);
+pub enum StreamDecryptor {
+    Salsa20(Salsa20),
+    ChaCha20(ChaCha20),
+}
 
 impl StreamDecryptor {
     #[allow(dead_code)]
@@ -135,8 +125,16 @@ impl StreamDecryptor {
         //   must be used for all protected binary inputs (all Protected="Ture" fields
         //   within XML database document)
         let mut zero_buf = vec![0u8; decoded.len()];
-        self.0.seek(skip as u64);
-        self.0.apply_keystream(zero_buf.as_mut_slice());
+        match self {
+            StreamDecryptor::Salsa20(ref mut salsa20) => {
+                salsa20.seek(skip as u64);
+                salsa20.apply_keystream(zero_buf.as_mut_slice());
+            }
+            StreamDecryptor::ChaCha20(ref mut chacha20) => {
+                chacha20.seek(skip as u64);
+                chacha20.apply_keystream(zero_buf.as_mut_slice());
+            }
+        }
 
         debug!("PSEUDORANDOM\n{:?}", zero_buf.hex_dump());
 

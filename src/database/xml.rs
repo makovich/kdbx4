@@ -11,8 +11,6 @@ use xmlparser::Token;
 use xmlparser::Token::*;
 use xmlparser::Tokenizer;
 
-use base64;
-
 use pretty_hex::PrettyHex;
 
 use std::cell::Cell;

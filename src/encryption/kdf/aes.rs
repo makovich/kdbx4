@@ -1,6 +1,5 @@
-use aes::block_cipher_trait::generic_array::GenericArray;
-use aes::block_cipher_trait::BlockCipher;
-use aes::Aes256;
+use aes::{Aes256, BlockEncrypt, NewBlockCipher};
+use cipher::generic_array::GenericArray;
 use sha2::{Digest, Sha256};
 
 use std::sync::Arc;
@@ -45,6 +44,6 @@ fn transform_inner(input: [u8; 16], rounds: u64, key: &[u8]) -> [u8; 16] {
 
 fn sha256(slice: &[u8]) -> Vec<u8> {
     let mut h = Sha256::new();
-    h.input(&slice);
-    h.result().as_slice().to_vec()
+    h.update(slice);
+    h.finalize().as_slice().to_vec()
 }

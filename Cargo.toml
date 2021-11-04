@@ -24,18 +24,20 @@ include = [
 name = "kdbx4"
 
 [dependencies]
-aes = "0.3.2"
-base64 = "0.11"
-block-modes = "0.3"
+aes = "0.7.5"
+base64 = "0.13.0"
+block-modes = "0.8.1"
 byteorder = "1"
-chacha20 = "0.2"
-env_logger = "0.7"
+chacha20 = "0.8.1"
+cipher = "0.3.0"
+env_logger = "0.9.0"
 flate2 = { version = "1.0", features = ["rust_backend"], default-features = false }
-hmac = "0.7"
+hmac = "0.11.0"
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_warn"] }
-pretty-hex = "0.1.0"
-rust-argon2 = "0.2.0"
-salsa20 = "0.3"
-sha2 = "0.8"
-stream-cipher = "0.3"
-xmlparser = "0.6.0"
+pretty-hex = "0.2.1"
+rust-argon2 = "0.8.3"
+salsa20 = "0.9.0"
+sha2 = "0.9.8"
+xmlparser = "0.6.1"
+
+[features]

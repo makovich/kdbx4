@@ -1,6 +1,7 @@
 use crate::kdbx::Kdbx4;
 
 use byteorder::{ByteOrder, LE};
+use cipher::generic_array::{typenum, GenericArray};
 use sha2::{Digest, Sha256, Sha512};
 
 use std::fs::read;
@@ -12,7 +13,7 @@ use std::path::Path;
 /// May be constructed with a plain password string
 /// or from a password and a key file ([read more](https://keepass.info/help/base/keys.html)).
 pub struct CompositeKey {
-    keys: Vec<[u8; 32]>,
+    keys: Vec<GenericArray<u8, typenum::U32>>,
 }
 
 impl CompositeKey {
@@ -58,8 +59,8 @@ impl CompositeKey {
 
     fn compose_keys(&self) -> [u8; 32] {
         let mut h = Sha256::new();
-        self.keys.iter().for_each(|k| h.input(k));
-        h.result().into()
+        self.keys.iter().for_each(|k| h.update(k));
+        h.finalize().into()
     }
 }
 
@@ -68,40 +69,40 @@ impl CompositeKey {
 pub struct TransformedKey<'a>(Vec<u8>, &'a Kdbx4);
 
 impl<'a> TransformedKey<'a> {
-    pub fn header_key(&self) -> [u8; 64] {
+    pub fn header_key(&self) -> GenericArray<u8, typenum::U64> {
         use crate::constants;
 
         self.block_key(constants::HEADER_BLK_IDX)
     }
 
-    pub fn block_key(&self, block_idx: u64) -> [u8; 64] {
+    pub fn block_key(&self, block_idx: u64) -> GenericArray<u8, typenum::U64> {
         let mut block_idx_bytes = [0; 8];
         LE::write_u64(&mut block_idx_bytes, block_idx);
 
         let mut h = Sha512::new();
-        h.input(&block_idx_bytes);
-        h.input(&self.hmac_key().as_ref());
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&block_idx_bytes);
+        h.update(&self.hmac_key().as_ref());
+        h.finalize()
     }
 
-    pub fn hmac_key(&self) -> [u8; 64] {
+    pub fn hmac_key(&self) -> GenericArray<u8, typenum::U64> {
         let mut h = Sha512::new();
-        h.input(&self.1.master_seed);
-        h.input(&self.0);
-        h.input(&[1]);
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&self.1.master_seed);
+        h.update(&self.0);
+        h.update(&[1]);
+        h.finalize()
     }
 
-    pub fn final_key(&self) -> [u8; 32] {
+    pub fn final_key(&self) -> GenericArray<u8, typenum::U32> {
         let mut h = Sha256::new();
-        h.input(&self.1.master_seed);
-        h.input(&self.0);
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&self.1.master_seed);
+        h.update(&self.0);
+        h.finalize()
     }
 }
 
-fn hash(slice: &[u8]) -> [u8; 32] {
+fn hash(slice: &[u8]) -> GenericArray<u8, typenum::U32> {
     let mut h = Sha256::new();
-    h.input(slice);
-    unsafe { std::mem::transmute(h.result()) }
+    h.update(slice);
+    h.finalize()
 }
