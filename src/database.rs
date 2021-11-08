@@ -60,7 +60,7 @@ impl Database {
     /// }
     ///
     /// ```
-    pub fn entries<'a>(&'a self) -> Vec<Entry<'a>> {
+    pub fn entries(&self) -> Vec<Entry> {
         let mut entries = self.xml.parse().expect("Cannot parse XML");
 
         for entry in &mut entries {

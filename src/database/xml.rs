@@ -11,8 +11,6 @@ use xmlparser::Token;
 use xmlparser::Token::*;
 use xmlparser::Tokenizer;
 
-use base64;
-
 use pretty_hex::PrettyHex;
 
 use std::cell::Cell;
@@ -34,7 +32,7 @@ impl Xml {
         String::from_utf8(v).map(Xml).map_err(From::from)
     }
 
-    pub(super) fn parse<'a>(&'a self) -> KdbxResult<Vec<Entry<'a>>> {
+    pub(super) fn parse(&self) -> KdbxResult<Vec<Entry>> {
         XmlParser::parse(&self.0)
     }
 }
@@ -67,7 +65,7 @@ impl<'a> Iterator for FakeCloseTagAdaptor<'a> {
                     self.buf.push_front(Ok(ElementStart(ns, tag)));
 
                     // Looping because of zero-to-many attributes
-                    while let Some(nxt) = self.tzr.next() {
+                    for nxt in self.tzr.by_ref() {
                         match nxt {
                             // Leaving `name="value"` as it is and moving forward
                             Ok(Attribute(_, _)) => self.buf.push_back(nxt),
@@ -105,10 +103,10 @@ enum Value<'a> {
 
 impl<'a> Value<'a> {
     fn plain(&self) -> &'a str {
-        if let Value::Plain(ref val) = self {
+        if let Value::Plain(val) = self {
             val
         } else {
-            &"(protected)"
+            "(protected)"
         }
     }
 

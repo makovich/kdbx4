@@ -1,7 +1,5 @@
 use log::*;
 
-use xmlparser;
-
 use pretty_hex::PrettyHex;
 
 use std::error;

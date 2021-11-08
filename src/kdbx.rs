@@ -153,7 +153,7 @@ fn read_header(offset: &mut usize, input: &[u8]) -> KdbxResult<Kdbx4> {
         let (typ, _, val) = read_tlv(offset, input);
 
         if typ == END_OF_HEADER {
-            return Ok(Kdbx4::try_from(&map)?);
+            return Kdbx4::try_from(&map);
         }
 
         map.insert(typ, val);
@@ -230,7 +230,7 @@ fn decrypt(
     key: &TransformedKey,
     decompress: bool,
 ) -> KdbxResult<Vec<u8>> {
-    let res = cipher.decrypt(&encrypted, &key.final_key())?;
+    let res = cipher.decrypt(encrypted, &key.final_key())?;
 
     Ok(if decompress { gunzip(&res)? } else { res })
 }
@@ -245,7 +245,7 @@ fn gunzip(data: &[u8]) -> KdbxResult<Vec<u8>> {
     Ok(buf)
 }
 
-fn verify_sig<'a>(offset: &mut usize, input: &'a [u8]) -> KdbxResult<()> {
+fn verify_sig(offset: &mut usize, input: &[u8]) -> KdbxResult<()> {
     use crate::constants::{SIG1, SIG2, VERSION};
 
     for exp in &[SIG1, SIG2, VERSION] {

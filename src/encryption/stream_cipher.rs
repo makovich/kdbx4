@@ -8,8 +8,6 @@ use chacha20::ChaCha20;
 use salsa20::Salsa20;
 use sha2::{Digest, Sha256, Sha512};
 
-use base64;
-
 use pretty_hex::PrettyHex;
 
 use std::fmt::{self, Debug};

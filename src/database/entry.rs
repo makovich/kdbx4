@@ -43,7 +43,7 @@ impl<'a> Entry<'a> {
 
         self.database
             .get()
-            .ok_or_else(|| Error::Other(msg))?
+            .ok_or(Error::Other(msg))?
             .cipher
             .decrypt_offset(self.password.0, self.password.1)
     }
