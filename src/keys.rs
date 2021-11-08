@@ -58,8 +58,8 @@ impl CompositeKey {
 
     fn compose_keys(&self) -> [u8; 32] {
         let mut h = Sha256::new();
-        self.keys.iter().for_each(|k| h.input(k));
-        h.result().into()
+        self.keys.iter().for_each(|k| h.update(k));
+        h.finalize().into()
     }
 }
 
@@ -79,29 +79,29 @@ impl<'a> TransformedKey<'a> {
         LE::write_u64(&mut block_idx_bytes, block_idx);
 
         let mut h = Sha512::new();
-        h.input(&block_idx_bytes);
-        h.input(&self.hmac_key().as_ref());
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&block_idx_bytes);
+        h.update(&self.hmac_key().as_ref());
+        unsafe { std::mem::transmute(h.finalize()) }
     }
 
     pub fn hmac_key(&self) -> [u8; 64] {
         let mut h = Sha512::new();
-        h.input(&self.1.master_seed);
-        h.input(&self.0);
-        h.input(&[1]);
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&self.1.master_seed);
+        h.update(&self.0);
+        h.update(&[1]);
+        unsafe { std::mem::transmute(h.finalize()) }
     }
 
     pub fn final_key(&self) -> [u8; 32] {
         let mut h = Sha256::new();
-        h.input(&self.1.master_seed);
-        h.input(&self.0);
-        unsafe { std::mem::transmute(h.result()) }
+        h.update(&self.1.master_seed);
+        h.update(&self.0);
+        unsafe { std::mem::transmute(h.finalize()) }
     }
 }
 
 fn hash(slice: &[u8]) -> [u8; 32] {
     let mut h = Sha256::new();
-    h.input(slice);
-    unsafe { std::mem::transmute(h.result()) }
+    h.update(slice);
+    unsafe { std::mem::transmute(h.finalize()) }
 }

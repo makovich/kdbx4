@@ -72,8 +72,8 @@ impl StreamCipher {
         match self.id {
             SALSA20_STREAM => {
                 let mut h = Sha256::new();
-                h.input(&self.key);
-                let key = h.result();
+                h.update(&self.key);
+                let key = h.finalize();
 
                 Decryptor::Salsa20(Box::new(
                     Salsa20::new_from_slices(&key, SALSA20_IV)
@@ -82,8 +82,8 @@ impl StreamCipher {
             }
             CHACHA20_STREAM => {
                 let mut h = Sha512::new();
-                h.input(&self.key);
-                let buf = h.result();
+                h.update(&self.key);
+                let buf = h.finalize();
 
                 let key = &buf[..32];
                 let iv = &buf[32..44];

@@ -40,6 +40,6 @@ fn transform_inner(mut block: [u8; 16], rounds: u64, key: &[u8]) -> [u8; 16] {
 
 fn sha256(slice: &[u8]) -> Vec<u8> {
     let mut h = Sha256::new();
-    h.input(&slice);
-    h.result().as_slice().to_vec()
+    h.update(&slice);
+    h.finalize().as_slice().to_vec()
 }
