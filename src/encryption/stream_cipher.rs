@@ -1,3 +1,4 @@
+use crate::constants::inner_header_type::*;
 use crate::error::Error;
 use crate::Result as KdbxResult;
 
@@ -6,7 +7,6 @@ use log::*;
 use chacha20::ChaCha20;
 use salsa20::Salsa20;
 use sha2::{Digest, Sha256, Sha512};
-use stream_cipher::{NewStreamCipher, SyncStreamCipher, SyncStreamCipherSeek};
 
 use base64;
 
@@ -19,9 +19,9 @@ use std::fmt::{self, Debug};
 /// Those are BASE64 encoded data encrypted with a streaming cypher,
 /// i.e. each next protected bytes encrypted right after another
 /// without reinitializing ciphers IV.
-pub enum StreamCipher {
-    Salsa20(Vec<u8>),
-    ChaCha20(Vec<u8>),
+pub struct StreamCipher {
+    id: u32,
+    key: Vec<u8>,
 }
 
 impl Debug for StreamCipher {
@@ -29,9 +29,14 @@ impl Debug for StreamCipher {
         write!(
             f,
             "\n{}",
-            match self {
-                StreamCipher::Salsa20(v) => format!("Salsa20\n{:?}", v.hex_dump()),
-                StreamCipher::ChaCha20(v) => format!("ChaCha20\n{:?}", v.hex_dump()),
+            match self.id {
+                SALSA20_STREAM => format!("Salsa20\n{:?}", self.key.hex_dump()),
+                CHACHA20_STREAM => format!("ChaCha20\n{:?}", self.key.hex_dump()),
+                _ => format!(
+                    "Unknown stream cipher: id={:?}!\n{:?}",
+                    self.id.to_le_bytes(),
+                    self.key.hex_dump()
+                ),
             }
         )
     }
@@ -39,15 +44,13 @@ impl Debug for StreamCipher {
 
 impl StreamCipher {
     pub fn try_from(id: u32, key: Vec<u8>) -> KdbxResult<StreamCipher> {
-        use crate::constants::inner_header_type::*;
+        let supported = [SALSA20_STREAM, CHACHA20_STREAM];
 
-        match id {
-            SALSA20_STREAM => Ok(StreamCipher::Salsa20(key)),
-            CHACHA20_STREAM => Ok(StreamCipher::ChaCha20(key)),
-            _ => Err(Error::UnsupportedStreamCipher(unsafe {
-                ::std::mem::transmute::<u32, [u8; 4]>(id.to_le()).to_vec()
-            })),
+        if supported.contains(&id) {
+            return Ok(StreamCipher { id, key });
         }
+
+        Err(Error::UnsupportedStreamCipher(id.to_le_bytes().to_vec()))
     }
 
     /// Returns initialized `StreamDecryptor`.
@@ -62,31 +65,35 @@ impl StreamCipher {
     /// let decrypted = protected.map(|v| cipher.decrypt(v).unwrap());
     /// ```
     ///
-    pub fn decryptor(&self) -> StreamDecryptor {
+    pub fn decryptor(&self) -> Decryptor {
         use crate::constants::SALSA20_IV;
+        use cipher::NewCipher;
 
-        match self {
-            StreamCipher::ChaCha20(stream_key) => {
+        match self.id {
+            SALSA20_STREAM => {
+                let mut h = Sha256::new();
+                h.input(&self.key);
+                let key = h.result();
+
+                Decryptor::Salsa20(Box::new(
+                    Salsa20::new_from_slices(&key, SALSA20_IV)
+                        .expect("Unable to create Salsa20 decryptor"),
+                ))
+            }
+            CHACHA20_STREAM => {
                 let mut h = Sha512::new();
-                h.input(stream_key);
+                h.input(&self.key);
                 let buf = h.result();
 
                 let key = &buf[..32];
                 let iv = &buf[32..44];
 
-                StreamDecryptor(Box::new(
-                    ChaCha20::new_var(key, iv).expect("Unable to create ChaCha20 decryptor"),
+                Decryptor::ChaCha20(Box::new(
+                    ChaCha20::new_from_slices(key, iv)
+                        .expect("Unable to create ChaCha20 decryptor"),
                 ))
             }
-            StreamCipher::Salsa20(stream_key) => {
-                let mut h = Sha256::new();
-                h.input(stream_key);
-                let key = h.result();
-
-                StreamDecryptor(Box::new(
-                    Salsa20::new_var(&key, SALSA20_IV).expect("Unable to create Salsa20 decryptor"),
-                ))
-            }
+            _ => unreachable!(),
         }
     }
 
@@ -100,13 +107,12 @@ impl StreamCipher {
     }
 }
 
-/// Helper to combine both needed traits
-trait Encryptor: SyncStreamCipher + SyncStreamCipherSeek {}
-impl<T: SyncStreamCipher + SyncStreamCipherSeek> Encryptor for T {}
+pub enum Decryptor {
+    Salsa20(Box<salsa20::Salsa20>),
+    ChaCha20(Box<chacha20::ChaCha20>),
+}
 
-pub struct StreamDecryptor(Box<dyn Encryptor>);
-
-impl StreamDecryptor {
+impl Decryptor {
     #[allow(dead_code)]
     pub fn decrypt(&mut self, encrypted: &[u8]) -> KdbxResult<Vec<u8>> {
         self.decrypt_offset(encrypted, 0)
@@ -135,11 +141,27 @@ impl StreamDecryptor {
         //   must be used for all protected binary inputs (all Protected="Ture" fields
         //   within XML database document)
         let mut zero_buf = vec![0u8; decoded.len()];
-        self.0.seek(skip as u64);
-        self.0.apply_keystream(zero_buf.as_mut_slice());
+
+        match self {
+            Decryptor::Salsa20(cipher) => {
+                apply_keystream(cipher.as_mut(), skip as u64, zero_buf.as_mut_slice())
+            }
+
+            Decryptor::ChaCha20(cipher) => {
+                apply_keystream(cipher.as_mut(), skip as u64, zero_buf.as_mut_slice())
+            }
+        }
 
         debug!("PSEUDORANDOM\n{:?}", zero_buf.hex_dump());
 
         Ok(zero_buf.iter().zip(decoded).map(|(x, y)| x ^ y).collect())
     }
+}
+
+fn apply_keystream<C>(cipher: &mut C, skip: u64, buf: &mut [u8])
+where
+    C: cipher::StreamCipher + cipher::StreamCipherSeek,
+{
+    cipher.seek(skip);
+    cipher.apply_keystream(buf);
 }

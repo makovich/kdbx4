@@ -7,7 +7,7 @@ use aes::Aes256;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use chacha20::ChaCha20;
-use stream_cipher::{NewStreamCipher, StreamCipher};
+use cipher::{NewCipher, StreamCipher};
 
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 
@@ -41,19 +41,16 @@ impl Cipher {
             Cipher::ChaCha20(iv) => {
                 debug!("decrypting ChaCha20");
 
-                let mut res = Vec::new();
-                res.extend_from_slice(encrypted);
-
-                let mut cipher = ChaCha20::new_var(key, iv).map_err(|_| Error::Decryption)?;
-                cipher.decrypt(&mut res);
-
+                let mut res = encrypted.to_owned();
+                ChaCha20::new(key.into(), iv.into()).apply_keystream(res.as_mut());
                 Ok(res)
             }
             Cipher::Aes256(iv) => {
                 debug!("decrypting Aes256");
 
-                let cipher = Aes256Cbc::new_var(key, iv).map_err(|_| Error::Decryption)?;
-                cipher.decrypt_vec(encrypted).map_err(|_| Error::Decryption)
+                Aes256Cbc::new_fix(key.into(), iv.into())
+                    .decrypt_vec(encrypted)
+                    .map_err(|_| Error::Decryption)
             }
         }
     }
