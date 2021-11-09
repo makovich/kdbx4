@@ -7,9 +7,6 @@ This is an implementation of KeePass database file reader in Rust. This crate ai
 ## Usage example
 
 ```rust
-// Pre 2018 edition
-// extern crate kdbx4;
-
 use kdbx4::{Kdbx4,CompositeKey};
 
 let key = CompositeKey::new(Some("P@ssW0rd"), Some("~/.secret")).unwrap();

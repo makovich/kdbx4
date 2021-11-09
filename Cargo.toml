@@ -1,8 +1,8 @@
 [package]
 name = "kdbx4"
 description = "KeePass KDBX4 file reader\n"
-version = "0.4.2"
-edition = "2018"
+version = "0.5.1"
+edition = "2021"
 
 authors = ["paul <paul@makovi.ch>"]
 license = "MIT OR Unlicense"
