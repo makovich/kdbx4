@@ -1,32 +1,35 @@
-use argon2::{self, Config};
+use argon2::{self, Config, Variant::*};
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn transform(
-    key: &[u8],
-    iterations: u32,
-    parallelism: u32,
-    memory: u32,
-    salt: &[u8],
-    secret_key: &[u8],
-    assoc_data: &[u8],
-    variant_is_id: bool,
-) -> Vec<u8> {
-    let variant = if variant_is_id {
-        argon2::Variant::Argon2id
-    } else {
-        argon2::Variant::Argon2d
-    };
+#[derive(Debug)]
+pub struct Params {
+    pub(super) iterations: u32,
+    pub(super) parallelism: u32,
+    pub(super) memory: u32,
+    pub(super) salt: Vec<u8>,
+    pub(super) secret_key: Vec<u8>,
+    pub(super) assoc_data: Vec<u8>,
+}
+
+pub(super) fn transform_d(key: &[u8], params: &Params) -> Vec<u8> {
+    transform(key, Argon2d, params)
+}
+
+pub(super) fn transform_id(key: &[u8], params: &Params) -> Vec<u8> {
+    transform(key, Argon2id, params)
+}
+
+fn transform(key: &[u8], variant: argon2::Variant, params: &Params) -> Vec<u8> {
     let config = Config {
         variant,
         version: argon2::Version::Version13,
         hash_length: 32,
-        mem_cost: memory / 1024,
-        time_cost: iterations,
+        mem_cost: params.memory / 1024,
+        time_cost: params.iterations,
         thread_mode: argon2::ThreadMode::Parallel,
-        lanes: parallelism,
-        secret: secret_key,
-        ad: assoc_data,
+        lanes: params.parallelism,
+        secret: params.secret_key.as_ref(),
+        ad: params.assoc_data.as_ref(),
     };
 
-    argon2::hash_raw(key, salt, &config).unwrap()
+    argon2::hash_raw(key, params.salt.as_ref(), &config).unwrap()
 }

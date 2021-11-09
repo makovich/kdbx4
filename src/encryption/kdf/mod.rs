@@ -13,43 +13,16 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Kdf {
-    Argon2 {
-        // version: u8,
-        variant_is_id: bool,
-        iterations: u32,
-        parallelism: u32,
-        memory: u32,
-        salt: Vec<u8>,
-        secret_key: Vec<u8>,
-        assoc_data: Vec<u8>,
-    },
-    Aes {
-        seed: Vec<u8>,
-        rounds: u64,
-    },
+    Argon2d { params: argon2::Params },
+    Argon2id { params: argon2::Params },
+    Aes { seed: Vec<u8>, rounds: u64 },
 }
 
 impl Kdf {
     pub fn transform(&self, key: &[u8]) -> Vec<u8> {
         match self {
-            Kdf::Argon2 {
-                variant_is_id,
-                iterations,
-                parallelism,
-                memory,
-                salt,
-                secret_key,
-                assoc_data,
-            } => argon2::transform(
-                key,
-                *iterations,
-                *parallelism,
-                *memory,
-                salt,
-                secret_key,
-                assoc_data,
-                *variant_is_id,
-            ),
+            Kdf::Argon2d { params } => argon2::transform_d(key, params),
+            Kdf::Argon2id { params } => argon2::transform_id(key, params),
             Kdf::Aes { seed, rounds } => aes::transform(key, seed, *rounds),
         }
     }
@@ -57,7 +30,7 @@ impl Kdf {
     pub fn try_from(input: &[u8]) -> KdbxResult<Self> {
         use crate::constants::{
             uuid::{AES_KDF, ARGON2D_KDF, ARGON2ID_KDF},
-            vd_param::{aes, argon2, UUID},
+            vd_param::{aes::*, UUID},
             vd_type::NONE,
             EMPTY, VD_VER,
         };
@@ -90,25 +63,15 @@ impl Kdf {
         });
 
         match map.get(UUID) {
-            Some(v @ &ARGON2D_KDF) | Some(v @ &ARGON2ID_KDF) => Ok(Kdf::Argon2 {
-                variant_is_id: *v == ARGON2ID_KDF,
-                iterations: LE::read_u64(
-                    map.get(argon2::ITERATIONS)
-                        .unwrap_or(&argon2::DEFAULT_ITERATIONS),
-                ) as u32,
-                parallelism: LE::read_u32(
-                    map.get(argon2::PARALLELISM)
-                        .unwrap_or(&argon2::DEFAULT_PARALLELISM),
-                ),
-                memory: LE::read_u64(map.get(argon2::MEMORY).unwrap_or(&argon2::DEFAULT_MEMORY))
-                    as u32,
-                salt: map.get(argon2::SALT).unwrap_or(&EMPTY).to_vec(),
-                secret_key: map.get(argon2::SECRETKEY).unwrap_or(&EMPTY).to_vec(),
-                assoc_data: map.get(argon2::ASSOCDATA).unwrap_or(&EMPTY).to_vec(),
+            Some(&ARGON2D_KDF) => Ok(Kdf::Argon2d {
+                params: make_params(&map),
+            }),
+            Some(&ARGON2ID_KDF) => Ok(Kdf::Argon2id {
+                params: make_params(&map),
             }),
             Some(&AES_KDF) => Ok(Kdf::Aes {
-                seed: map.get(aes::SEED).unwrap_or(&EMPTY).to_vec(),
-                rounds: LE::read_u64(map.get(aes::ROUNDS).unwrap_or(&aes::DEFAULT_ROUNDS)),
+                seed: map.get(SEED).unwrap_or(&EMPTY).to_vec(),
+                rounds: LE::read_u64(map.get(ROUNDS).unwrap_or(&DEFAULT_ROUNDS)),
             }),
             Some(kdf) => Err(Error::UnsupportedKdf(kdf.to_vec())),
             _ => {
@@ -142,4 +105,24 @@ fn read_kv<'a>(offset: &mut usize, input: &'a [u8]) -> (u8, &'a str, &'a [u8]) {
 
 fn debug_kv(kv: (&&str, &&[u8])) {
     debug!("\nField '{}' {:?}", kv.0, kv.1.hex_dump())
+}
+
+fn make_params(map: &HashMap<&str, &[u8]>) -> argon2::Params {
+    use crate::constants::{vd_param::argon2::*, EMPTY};
+
+    let iterations = LE::read_u64(map.get(ITERATIONS).unwrap_or(&DEFAULT_ITERATIONS)) as u32;
+    let parallelism = LE::read_u32(map.get(PARALLELISM).unwrap_or(&DEFAULT_PARALLELISM));
+    let memory = LE::read_u64(map.get(MEMORY).unwrap_or(&DEFAULT_MEMORY)) as u32;
+    let salt = map.get(SALT).unwrap_or(&EMPTY).to_vec();
+    let secret_key = map.get(SECRETKEY).unwrap_or(&EMPTY).to_vec();
+    let assoc_data = map.get(ASSOCDATA).unwrap_or(&EMPTY).to_vec();
+
+    argon2::Params {
+        iterations,
+        parallelism,
+        memory,
+        salt,
+        secret_key,
+        assoc_data,
+    }
 }
